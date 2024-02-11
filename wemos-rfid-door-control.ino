@@ -120,7 +120,7 @@ void loop() {
   if(debug) Serial.println(preferences.getUInt("cardsCount"));
   if(debug) Serial.println();
 
-  if(debug) Serial.println("RFID is ready to read a card!");
+  if(debug) Serial.println("RFID sensor is ready to read a card!");
   if(debug) Serial.flush();
   preferences.end();
 }
