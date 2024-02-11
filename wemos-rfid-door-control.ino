@@ -169,14 +169,11 @@ String cardIdRead() {
 }
 
 bool isCardAllowed(String cardId) {
-  String cardIdFromMemory = preferences.getString(cardId.c_str());
-  bool cardIdExists = preferences.isKey(cardId.c_str());
-
-  return cardIdExists;
+  return preferences.isKey(cardId.c_str());
 }
 
 bool isMasterCard(String cardId) {
-  return cardId.equalsIgnoreCase(MASTER_CARD_ID);
+  return cardId.equals(MASTER_CARD_ID);
 }
 
 int addNewCard(String masterCardId) {
