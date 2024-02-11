@@ -39,15 +39,17 @@
 #include <MFRC522.h>
 #include <Preferences.h>
 #include "./EnvVariables.h"
+#include "./lib/LedIndicator/LedIndicator.h"
 
 #define RST_PIN D3  // Configurable, see typical pin layout above
 #define SS_PIN D8   // Configurable, see typical pin layout above
-#define LED_RED D4
 #define LED_GREEN D1
+#define LED_RED D4
 #define RELAY_DOOR_PIN D2
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);
 Preferences preferences; // To save cards to FLASH memory
+LedIndicator ledIndicator(LED_GREEN, LED_RED);
 
 uint16_t cardsCount = 0;
 bool debug = true;
@@ -103,10 +105,10 @@ void loop() {
     if(debug) Serial.println(cardId);
 
     if (isCardAllowed(cardId)) {
-      cardIsAllowedLedIndicator();
+      ledIndicator.indicate(ledIndicator.indicatorType.SUCCESS_TAP);
       openTheDoor();
     } else {
-      cardIsNotAllowedLedIndicator();
+      ledIndicator.indicate(ledIndicator.indicatorType.FAILED_TAP);
     }
   }
 
@@ -126,10 +128,10 @@ void loop() {
 void displayAddNewCardMessage(int status) {
   if(status == -1) {
       if(debug) Serial.println("Failed: Card already exists!");
-      cardAlreadyExistsLedIndicator();
+      ledIndicator.indicate(ledIndicator.indicatorType.CARD_ALREADY_EXISTS);
     } else {
       if(debug) Serial.println("Success: Card added!");
-      cardAddedSuccessLedIndicator();
+      ledIndicator.indicate(ledIndicator.indicatorType.CARD_ADDED_SUCCESS);
     }
 }
 
@@ -170,16 +172,16 @@ bool isMasterCard(String cardId) {
 
 int addNewCard(String masterCardId) {
   if(debug) Serial.println("Scan the new card that you want to add...");
-  enterAddCardLedIndicator();
+  ledIndicator.indicate(ledIndicator.indicatorType.ENTER_NEW_CARD_CONDITION);
 
   while(!isNewCardPresent()) {
-    waitingNewCardLedIndicator();    
+    ledIndicator.indicate(ledIndicator.indicatorType.WAITING_CARD);
   }
 
   String cardID = cardIdRead();
 
   if(isMasterCard(cardID)) {
-    masterCardNotPermittedLedIndicator();
+    ledIndicator.indicate(ledIndicator.indicatorType.MASTER_CARD_NOT_PERMITTED);
     addNewCard(cardID);
   }
 
@@ -198,99 +200,6 @@ int addNewCard(String masterCardId) {
   preferences.putUInt("cardsCount", newCardCount);
   return 0;
 }
-
-/*
-* Table LED indication meaning:
-* 1 - In the add new card program (only with the master card):
-* * 1.1 - When enter the master card program to add new card will blink: Grenn Led (turn on for 400ms), Orange Led (turn on for 400ms), Red Led (turn on for 400ms)
-* * 1.2 - Waiting a new card to tap on RFID sensor will blink: Green Led (turn on and off for 400ms) until tap a card
-* * 1.3 - If the "new card" tapped is the master card will blink: Orange Led (turn on and off for 400ms) 4 times
-* * 1.4 - If the new card already exists will turn on: Red Led (turn on for 1000ms) 1 time
-* * 1.5 - If the new card was insert with success will: Green Led (turn on for 900ms) and blink 1 time for 100ms 
-*
-* 2 - Normal Operational Program
-* * 2.1 - If the card is allowed will: Green Led (turn on for 1000ms) 1 time
-* * 2.2 - If the card is NOT allowed will: Red Led (turn on for 1000ms) 1 time
-*/
-
-// Master Card: add new card
-void enterAddCardLedIndicator() {
-  digitalWrite(LED_GREEN, HIGH);
-  digitalWrite(LED_RED, LOW);
-  delay(400);
-  digitalWrite(LED_GREEN, HIGH);
-  digitalWrite(LED_RED, HIGH);
-  delay(400);
-  digitalWrite(LED_GREEN, LOW);
-  digitalWrite(LED_RED, HIGH);
-  delay(400);
-  digitalWrite(LED_GREEN, LOW);
-  digitalWrite(LED_RED, LOW);
-}
-
-void waitingNewCardLedIndicator() {
-  digitalWrite(LED_GREEN, HIGH);
-  digitalWrite(LED_RED, LOW);
-  delay(400);
-  digitalWrite(LED_GREEN, LOW);
-  digitalWrite(LED_RED, LOW);
-  delay(400);
-}
-
-void masterCardNotPermittedLedIndicator() {
-  digitalWrite(LED_GREEN, HIGH);
-  digitalWrite(LED_RED, HIGH);
-  delay(400);
-  digitalWrite(LED_GREEN, LOW);
-  digitalWrite(LED_RED, LOW);
-  delay(400);
-  digitalWrite(LED_GREEN, HIGH);
-  digitalWrite(LED_RED, HIGH);
-  delay(400);
-  digitalWrite(LED_GREEN, LOW);
-  digitalWrite(LED_RED, LOW);
-}
-
-void cardAlreadyExistsLedIndicator() {
-  digitalWrite(LED_GREEN, LOW);
-  digitalWrite(LED_RED, HIGH);
-  delay(1000);
-  digitalWrite(LED_GREEN, LOW);
-  digitalWrite(LED_RED, LOW);
-}
-
-void cardAddedSuccessLedIndicator() {
-  digitalWrite(LED_GREEN, HIGH);
-  digitalWrite(LED_RED, LOW);
-  delay(900);
-  digitalWrite(LED_GREEN, LOW);
-  digitalWrite(LED_RED, LOW);
-  delay(100);
-  digitalWrite(LED_GREEN, HIGH);
-  digitalWrite(LED_RED, LOW);
-  delay(100);
-  digitalWrite(LED_GREEN, LOW);
-  digitalWrite(LED_RED, LOW);
-}
-// Master Card: add new card
-
-// Normal Operation
-void cardIsAllowedLedIndicator() {
-  digitalWrite(LED_GREEN, HIGH);
-  digitalWrite(LED_RED, LOW);
-  delay(1000);
-  digitalWrite(LED_GREEN, LOW);
-  digitalWrite(LED_RED, LOW);
-}
-
-void cardIsNotAllowedLedIndicator() {
-  digitalWrite(LED_GREEN, LOW);
-  digitalWrite(LED_RED, HIGH);
-  delay(1000);
-  digitalWrite(LED_GREEN, LOW);
-  digitalWrite(LED_RED, LOW);
-}
-// Normal Operation
 
 void openTheDoor() {
   digitalWrite(RELAY_DOOR_PIN, HIGH);
