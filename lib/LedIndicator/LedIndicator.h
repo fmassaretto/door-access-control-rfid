@@ -1,6 +1,3 @@
-#include <stdint.h>
-#include <Arduino.h>
-
 struct Indicator
 {
     enum type {

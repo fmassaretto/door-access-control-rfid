@@ -53,11 +53,15 @@ LedIndicator ledIndicator(LED_GREEN, LED_RED);
 
 uint16_t cardsCount = 0;
 bool debug = true;
+bool clearAllCardsInMemory = true;
 
 void setup() {
   if(debug) Serial.begin(9600);
+
   preferences.begin(WORKSPACE_NAME, false);
-  // preferences.clear(); // To clear all data in memory, uncomment if want to reset the data
+
+  if(clearAllCardsInMemory) preferences.clear(); // To clear all data in memory
+  
   cardsCount = preferences.getUInt("cardsCount", 0);
 
   saveMasterCardToMemory();
