@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <Arduino.h>
 
-struct IndicatorType
+struct Indicator
 {
     enum type {
       ENTER_NEW_CARD_CONDITION, 
@@ -18,7 +18,7 @@ class LedIndicator {
   private:
     uint8_t GREEN_LED;
     uint8_t RED_LED;
-    void indicatorFactory(IndicatorType::type type);
+    void indicatorFactory(Indicator::type type);
     void enterAddCardLedIndicator();
     void waitingNewCardLedIndicator();
     void masterCardNotPermittedLedIndicator();
@@ -27,8 +27,8 @@ class LedIndicator {
     void cardIsAllowedLedIndicator();
     void cardIsNotAllowedLedIndicator();
   public:
-    void indicate(IndicatorType::type type);
-    IndicatorType indicatorType;
+    void indicate(Indicator::type type);
+    Indicator indicatorType;
 
   LedIndicator(uint8_t greenLed, uint8_t redLed){
     GREEN_LED = greenLed;
@@ -36,31 +36,31 @@ class LedIndicator {
   }
 };
 
-void LedIndicator::indicate(IndicatorType::type type) {
+void LedIndicator::indicate(Indicator::type type) {
   indicatorFactory(type);
 }
 
-void LedIndicator::indicatorFactory(IndicatorType::type type) {
+void LedIndicator::indicatorFactory(Indicator::type type) {
   switch (type) {
-    case IndicatorType::ENTER_NEW_CARD_CONDITION:
+    case Indicator::ENTER_NEW_CARD_CONDITION:
       enterAddCardLedIndicator();
       break;
-    case IndicatorType::WAITING_CARD:
+    case Indicator::WAITING_CARD:
       waitingNewCardLedIndicator();
       break;
-    case IndicatorType::MASTER_CARD_NOT_PERMITTED:
+    case Indicator::MASTER_CARD_NOT_PERMITTED:
       masterCardNotPermittedLedIndicator();
       break;
-    case IndicatorType::CARD_ALREADY_EXISTS:
+    case Indicator::CARD_ALREADY_EXISTS:
       cardAlreadyExistsLedIndicator();
       break;
-    case IndicatorType::CARD_ADDED_SUCCESS:
+    case Indicator::CARD_ADDED_SUCCESS:
       cardAddedSuccessLedIndicator();
       break;
-    case IndicatorType::SUCCESS_TAP:
+    case Indicator::SUCCESS_TAP:
       cardIsAllowedLedIndicator();
       break;
-    case IndicatorType::FAILED_TAP:
+    case Indicator::FAILED_TAP:
       cardIsNotAllowedLedIndicator();
       break;
   }
