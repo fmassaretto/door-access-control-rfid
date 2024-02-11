@@ -61,7 +61,7 @@ void setup() {
   preferences.begin(WORKSPACE_NAME, false);
 
   if(clearAllCardsInMemory) preferences.clear(); // To clear all data in memory
-  
+
   cardsCount = preferences.getUInt("cardsCount", 0);
 
   saveMasterCardToMemory();
@@ -76,8 +76,8 @@ void setup() {
   preferences.end();
 }
 
-void saveMasterCardToMemory(){
-  if(preferences.getString(MASTER_CARD_ID).isEmpty()){
+void saveMasterCardToMemory() {
+  if(!preferences.isKey(MASTER_CARD_ID)){
     preferences.putString(MASTER_CARD_ID, "Master Card");
     preferences.putUInt("cardsCount", ++cardsCount);
   }
@@ -102,8 +102,7 @@ void loop() {
   if(isMasterCard(cardId)) {
     int status = addNewCard(cardId);
 
-    if(debug) Serial.println();
-    if(debug) displayAddNewCardMessage(status);
+    addNewCardIndicator(status);
   } else {
     if(debug) Serial.print("Debugger => loop() - Cards id: ");
     if(debug) Serial.println(cardId);
@@ -120,23 +119,29 @@ void loop() {
 
   delay(1000);
 
-  if(debug) Serial.print("Cards in memory: ");
-  if(debug) Serial.println(preferences.getUInt("cardsCount"));
-  if(debug) Serial.println();
+  if(debug) showCardsInMemory();
 
   if(debug) Serial.println("RFID sensor is ready to read a card!");
   if(debug) Serial.flush();
   preferences.end();
 }
 
-void displayAddNewCardMessage(int status) {
+void addNewCardIndicator(int status) {
+  if(debug) Serial.println();
   if(status == -1) {
-      if(debug) Serial.println("Failed: Card already exists!");
-      ledIndicator.indicate(ledIndicator.indicatorType.CARD_ALREADY_EXISTS);
-    } else {
-      if(debug) Serial.println("Success: Card added!");
-      ledIndicator.indicate(ledIndicator.indicatorType.CARD_ADDED_SUCCESS);
-    }
+    if(debug) Serial.println("Failed: Card already exists!");
+    ledIndicator.indicate(ledIndicator.indicatorType.CARD_ALREADY_EXISTS);
+  } else {
+    if(debug) Serial.println("Success: Card added!");
+    ledIndicator.indicate(ledIndicator.indicatorType.CARD_ADDED_SUCCESS);
+  }
+}
+
+void showCardsInMemory() {
+  Serial.println("-------------------------------");
+  Serial.print("Cards in memory (Including Master Card): ");
+  Serial.println(preferences.getUInt("cardsCount"));
+  Serial.println("-------------------------------");
 }
 
 bool isNewCardPresent() {
