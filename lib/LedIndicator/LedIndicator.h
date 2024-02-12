@@ -104,13 +104,19 @@ void LedIndicator::waitingNewCardLedIndicator() {
 void LedIndicator::masterCardNotPermittedLedIndicator() {
   digitalWrite(GREEN_LED, HIGH);
   digitalWrite(RED_LED, HIGH);
-  delay(400);
+  delay(200);
   digitalWrite(GREEN_LED, LOW);
   digitalWrite(RED_LED, LOW);
-  delay(400);
+  delay(200);
   digitalWrite(GREEN_LED, HIGH);
   digitalWrite(RED_LED, HIGH);
-  delay(400);
+  delay(200);
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(RED_LED, LOW);
+  delay(200);
+  digitalWrite(GREEN_LED, HIGH);
+  digitalWrite(RED_LED, HIGH);
+  delay(200);
   digitalWrite(GREEN_LED, LOW);
   digitalWrite(RED_LED, LOW);
 }
@@ -118,7 +124,13 @@ void LedIndicator::masterCardNotPermittedLedIndicator() {
 void LedIndicator::cardAlreadyExistsLedIndicator() {
   digitalWrite(GREEN_LED, LOW);
   digitalWrite(RED_LED, HIGH);
-  delay(1000);
+  delay(800);
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(RED_LED, LOW);
+  delay(100);
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(RED_LED, HIGH);
+  delay(100);
   digitalWrite(GREEN_LED, LOW);
   digitalWrite(RED_LED, LOW);
 }
@@ -126,7 +138,13 @@ void LedIndicator::cardAlreadyExistsLedIndicator() {
 void LedIndicator::cardAddedSuccessLedIndicator() {
   digitalWrite(GREEN_LED, HIGH);
   digitalWrite(RED_LED, LOW);
-  delay(900);
+  delay(800);
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(RED_LED, LOW);
+  delay(100);
+  digitalWrite(GREEN_LED, HIGH);
+  digitalWrite(RED_LED, LOW);
+  delay(100);
   digitalWrite(GREEN_LED, LOW);
   digitalWrite(RED_LED, LOW);
   delay(100);
