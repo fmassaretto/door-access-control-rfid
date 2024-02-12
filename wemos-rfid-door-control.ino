@@ -53,7 +53,7 @@ LedIndicator ledIndicator(LED_GREEN, LED_RED);
 
 uint16_t cardsCount = 0;
 bool debug = true;
-bool clearAllCardsInMemory = true;
+bool clearAllCardsInMemory = false;
 
 void setup() {
   if(debug) Serial.begin(9600);
@@ -100,7 +100,7 @@ void loop() {
   String cardId = cardIdRead();
 
   if(isMasterCard(cardId)) {
-    int status = addNewCard(cardId);
+    int status = addNewCard();
 
     addNewCardIndicator(status);
   } else {
@@ -121,19 +121,25 @@ void loop() {
 
   if(debug) showCardsInMemory();
 
+  mfrc522.PICC_HaltA(); 
+  preferences.end();
+
   if(debug) Serial.println("RFID sensor is ready to read a card!");
   if(debug) Serial.flush();
-  preferences.end();
 }
 
 void addNewCardIndicator(int status) {
   if(debug) Serial.println();
-  if(status == -1) {
-    if(debug) Serial.println("Failed: Card already exists!");
-    ledIndicator.indicate(ledIndicator.indicatorType.CARD_ALREADY_EXISTS);
-  } else {
+
+  if(status == 200) {
     if(debug) Serial.println("Success: Card added!");
     ledIndicator.indicate(ledIndicator.indicatorType.CARD_ADDED_SUCCESS);
+  } else if(status == 409) {
+    if(debug) Serial.println("Failed: Card already exists!");
+    ledIndicator.indicate(ledIndicator.indicatorType.CARD_ALREADY_EXISTS);
+  } else if(status == 400) {
+    if(debug) Serial.println("Failed: Master card tapped!");
+    ledIndicator.indicate(ledIndicator.indicatorType.MASTER_CARD_NOT_PERMITTED);
   }
 }
 
@@ -176,7 +182,7 @@ bool isMasterCard(String cardId) {
   return cardId.equals(MASTER_CARD_ID);
 }
 
-int addNewCard(String masterCardId) {
+int addNewCard() {
   if(debug) Serial.println("Scan the new card that you want to add...");
   ledIndicator.indicate(ledIndicator.indicatorType.ENTER_NEW_CARD_CONDITION);
 
@@ -184,17 +190,16 @@ int addNewCard(String masterCardId) {
     ledIndicator.indicate(ledIndicator.indicatorType.WAITING_CARD);
   }
 
-  String cardID = cardIdRead();
+  String cardId = cardIdRead();
 
-  if(isMasterCard(cardID)) {
-    ledIndicator.indicate(ledIndicator.indicatorType.MASTER_CARD_NOT_PERMITTED);
-    addNewCard(cardID);
+  if(isMasterCard(cardId)) {
+    return 400;
   }
 
-  bool cardIdExists = preferences.isKey(cardID.c_str());
+  bool cardIdExists = preferences.isKey(cardId.c_str());
 
   if(cardIdExists) {
-    return -1;
+    return 409;
   }
 
   // add card only if the card do not already exists
@@ -202,9 +207,9 @@ int addNewCard(String masterCardId) {
   int newCardCount = cardCount + 1;
   String cardName = "Card " + String(newCardCount);
 
-  preferences.putString(cardID.c_str(), cardName.c_str());
+  preferences.putString(cardId.c_str(), cardName.c_str());
   preferences.putUInt("cardsCount", newCardCount);
-  return 0;
+  return 200;
 }
 
 void openTheDoor() {
