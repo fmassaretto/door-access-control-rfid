@@ -1,51 +1,10 @@
-/*
- * --------------------------------------------------------------------------------------------------------------------
- * Example sketch/program showing how to read data from a PICC to serial.
- * --------------------------------------------------------------------------------------------------------------------
- * This is a MFRC522 library example; for further details and other examples see: https://github.com/miguelbalboa/rfid
- *
- * Example sketch/program showing how to read data from a PICC (that is: a RFID Tag or Card) using a MFRC522 based RFID
- * Reader on the Arduino SPI interface.
- *
- * When the Arduino and the MFRC522 module are connected (see the pin layout below), load this sketch into Arduino IDE
- * then verify/compile and upload it. To see the output: use Tools, Serial Monitor of the IDE (hit Ctrl+Shft+M). When
- * you present a PICC (that is: a RFID Tag or Card) at reading distance of the MFRC522 Reader/PCD, the serial output
- * will show the ID/UID, type and any data blocks it can read. Note: you may see "Timeout in communication" messages
- * when removing the PICC from reading distance too early.
- *
- * If your reader supports it, this sketch/program will read all the PICCs presented (that is: multiple tag reading).
- * So if you stack two or more PICCs on top of each other and present them to the reader, it will first output all
- * details of the first and then the next PICC. Note that this may take some time as all data blocks are dumped, so
- * keep the PICCs at reading distance until complete.
- *
- * @license Released into the public domain.
- *
- * Typical pin layout used:
- * -----------------------------------------------------------------------------------------
- *             MFRC522      Arduino       Arduino   Arduino    Arduino          Arduino
- *             Reader/PCD   Uno/101       Mega      Nano v3    Leonardo/Micro   Pro Micro
- * Signal      Pin          Pin           Pin       Pin        Pin              Pin
- * -----------------------------------------------------------------------------------------
- * RST/Reset   RST          9             5         D9         RESET/ICSP-5     RST
- * SPI SS      SDA(SS)      10            53        D10        10               10
- * SPI MOSI    MOSI         11 / ICSP-4   51        D11        ICSP-4           16
- * SPI MISO    MISO         12 / ICSP-1   50        D12        ICSP-1           14
- * SPI SCK     SCK          13 / ICSP-3   52        D13        ICSP-3           15
- *
- * More pin layouts for other boards can be found here: https://github.com/miguelbalboa/rfid#pin-layout
- */
-
 #include <SPI.h>
 #include <MFRC522.h>
 #include <Preferences.h>
 #include "./EnvVariables.h"
 #include "./lib/LedIndicator/LedIndicator.h"
 
-#define RST_PIN D3  // Configurable, see typical pin layout above
-#define SS_PIN D8   // Configurable, see typical pin layout above
-#define LED_GREEN D1
-#define LED_RED D4
-#define RELAY_DOOR_PIN D2
+#include "./lib/PinoutsBoards/arduino_nano_pinouts.h"  // You can choose pinouts definition for your board
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);
 Preferences preferences; // To save cards to FLASH memory
@@ -92,7 +51,7 @@ void rfidInit() {
 }
 
 void loop() {
-  if (!isNewCardPresent()) {
+  if (!isCardPresent()) {
     return;
   }
 
@@ -100,7 +59,7 @@ void loop() {
   String cardId = cardIdRead();
 
   if(isMasterCard(cardId)) {
-    int status = addNewCard();
+    int status = processCard();
 
     addNewCardIndicator(status);
   } else {
@@ -134,12 +93,20 @@ void addNewCardIndicator(int status) {
   if(status == 200) {
     if(debug) Serial.println("Success: Card added!");
     ledIndicator.indicate(ledIndicator.indicatorType.CARD_ADDED_SUCCESS);
+  } else if(status == 202){
+    if(debug) Serial.println("Success: Card removed!");
+    ledIndicator.indicate(ledIndicator.indicatorType.CARD_REMOVED);
+  } else if(status == 204) {
+    if(debug) Serial.println("Failed: Card does not exist!");
+    ledIndicator.indicate(ledIndicator.indicatorType.CARD_DOES_NOT_EXIST);
   } else if(status == 409) {
     if(debug) Serial.println("Failed: Card already exists!");
     ledIndicator.indicate(ledIndicator.indicatorType.CARD_ALREADY_EXISTS);
   } else if(status == 400) {
     if(debug) Serial.println("Failed: Master card tapped!");
     ledIndicator.indicate(ledIndicator.indicatorType.MASTER_CARD_NOT_PERMITTED);
+  } else {
+    if(debug) Serial.println("Error: Cannot have status code: " + status);
   }
 }
 
@@ -150,7 +117,7 @@ void showCardsInMemory() {
   Serial.println("-------------------------------");
 }
 
-bool isNewCardPresent() {
+bool isCardPresent() {
   // Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
   if (!mfrc522.PICC_IsNewCardPresent()) {
     return false;
@@ -182,39 +149,80 @@ bool isMasterCard(String cardId) {
   return cardId.equals(MASTER_CARD_ID);
 }
 
-int addNewCard() {
+bool isCardAlreadyExists(String cardId) {
+  return preferences.isKey(cardId.c_str());
+}
+
+int processCard() {
   if(debug) Serial.println("Scan the new card that you want to add...");
+  
   ledIndicator.indicate(ledIndicator.indicatorType.ENTER_NEW_CARD_CONDITION);
 
-  while(!isNewCardPresent()) {
-    ledIndicator.indicate(ledIndicator.indicatorType.WAITING_CARD);
-  }
+  waitForCard();
 
   String cardId = cardIdRead();
 
   if(isMasterCard(cardId)) {
-    return 400;
+    // master card tapped again, so can remove a card from database
+    return removeCard();
   }
 
-  bool cardIdExists = preferences.isKey(cardId.c_str());
-
-  if(cardIdExists) {
+  if(isCardAlreadyExists(cardId.c_str())) {
     return 409;
   }
 
   // add card only if the card do not already exists
+  return addNewCard(cardId);
+}
+
+int removeCard() {
+  int cardCount = preferences.getUInt("cardsCount");
+
+  if(debug) Serial.println("Scan the card that you want to remove...");
+
+  waitForCard();
+
+  String cardId = cardIdRead();
+
+  if(debug) Serial.println("Trying to remove card ID: " + cardId);
+
+  if(isCardAlreadyExists(cardId.c_str())) {
+    int newCardCount = cardCount - 1;
+
+    preferences.remove(cardId.c_str());
+    preferences.putUInt("cardsCount", newCardCount);
+    
+    return 202;
+  }
+
+  if(debug) Serial.println("Card ID: " + cardId + " does not exists!");
+
+  return 400;
+}
+
+void waitForCard() {
+  while(!isCardPresent()) {
+    ledIndicator.indicate(ledIndicator.indicatorType.WAITING_CARD);
+  }
+}
+
+int addNewCard(String cardId) {
   int cardCount = preferences.getUInt("cardsCount");
   int newCardCount = cardCount + 1;
+
   String cardName = "Card " + String(newCardCount);
 
   preferences.putString(cardId.c_str(), cardName.c_str());
   preferences.putUInt("cardsCount", newCardCount);
+
   return 200;
 }
 
 void openTheDoor() {
   digitalWrite(RELAY_DOOR_PIN, HIGH);
-  delay(950);
+  // Using this electric lock: intelbras fx 2000 and the guide
+  // recommends to keep on for around 1 second (1000ms)
+  delay(1100); 
 }
 
 void keepDoorClosed() {
